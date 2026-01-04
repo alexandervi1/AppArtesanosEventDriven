@@ -1,0 +1,101 @@
+<section class="checkout">
+  <header>
+    <p class="pill">Pasos finales</p>
+    <h1>Completa tus datos para finalizar la compra</h1>
+    <p *ngIf="items().length">
+      {{ items().length }} {{ items().length === 1 ? 'producto' : 'productos' }} -
+      Subtotal {{ total() | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+    </p>
+  </header>
+
+  <div class="result" *ngIf="orden() as order">
+    <h2>Gracias por tu compra!</h2>
+    <p>
+      Generamos la orden <strong>{{ order.order_number }}</strong>. Recibiras un correo con el detalle y el taller se
+      pondra en contacto contigo.
+    </p>
+    <button type="button" class="btn-primary" (click)="volverAlInicio()">Volver al catalogo</button>
+  </div>
+
+  <form [formGroup]="formulario" (ngSubmit)="proceder()" *ngIf="!orden()">
+    <fieldset>
+      <legend>Datos de contacto</legend>
+      <div class="email-field">
+        <label>
+          Correo electronico *
+          <input
+            formControlName="email"
+            type="email"
+            autocomplete="off"
+            placeholder="tucorreo@mail.com"
+            (focus)="onEmailFocus()"
+            (blur)="onEmailBlur()"
+          />
+          <small *ngIf="formulario.controls.email.touched && formulario.controls.email.invalid">
+            Ingresa un correo valido.
+          </small>
+        </label>
+        <ul class="email-suggestions" *ngIf="emailFocused() && emailSuggestions().length">
+          <li *ngFor="let cliente of emailSuggestions()">
+            <button type="button" (click)="seleccionarCorreo(cliente)">
+              <span class="email">{{ cliente.email }}</span>
+              <span class="name">{{ cliente.first_name }} {{ cliente.last_name }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div class="grid">
+        <label>
+          Nombres *
+          <input formControlName="first_name" type="text" placeholder="Nombre" />
+          <small *ngIf="formulario.controls.first_name.touched && formulario.controls.first_name.invalid">
+            Este campo es obligatorio.
+          </small>
+        </label>
+        <label>
+          Apellidos *
+          <input formControlName="last_name" type="text" placeholder="Apellido" />
+          <small *ngIf="formulario.controls.last_name.touched && formulario.controls.last_name.invalid">
+            Este campo es obligatorio.
+          </small>
+        </label>
+      </div>
+      <label>
+        Telefono
+        <input formControlName="phone" type="tel" placeholder="+593..." />
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Direccion de entrega</legend>
+      <div class="grid">
+        <label>
+          Provincia
+          <input formControlName="province" type="text" placeholder="Provincia" />
+        </label>
+        <label>
+          Ciudad
+          <input formControlName="city" type="text" placeholder="Ciudad" />
+        </label>
+      </div>
+      <label>
+        Direccion detallada
+        <textarea formControlName="address_line" rows="2" placeholder="Calles, referencias..."></textarea>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notas adicionales</legend>
+      <textarea formControlName="notes" rows="3" placeholder="Indica observaciones para la entrega o el taller."></textarea>
+    </fieldset>
+
+    <div class="error" *ngIf="error() as err">{{ err }}</div>
+
+    <div class="actions">
+      <a routerLink="/cart" class="link">Volver al carrito</a>
+      <button type="submit" class="btn-primary" [disabled]="procesando()">
+        {{ procesando() ? 'Procesando...' : 'Confirmar y pagar' }}
+      </button>
+    </div>
+  </form>
+</section>

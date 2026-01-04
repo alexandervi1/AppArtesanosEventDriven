@@ -1,0 +1,240 @@
+<section class="mx-auto max-w-6xl space-y-10 px-6 py-12">
+  <header class="flex flex-col gap-6 rounded-3xl border border-amber-100 bg-gradient-to-br from-white via-amber-50 to-white p-10 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+    <div class="space-y-3">
+      <span class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-amber-600">
+        Panel administrativo
+      </span>
+      <h1 class="text-3xl font-semibold text-slate-900">Resumen de ventas</h1>
+      <p class="max-w-2xl text-sm text-slate-600">
+        Visualiza el rendimiento comercial reciente, monitorea los estados de los pedidos y toma decisiones informadas con los datos consolidados.
+      </p>
+      <p class="text-xs uppercase tracking-[0.3em] text-slate-400">
+        {{ formatoTimestamp() }}
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+        (click)="cargarPedidos()"
+      >
+        <span aria-hidden="true">⟳</span>
+        Actualizar datos
+      </button>
+      <a
+        routerLink="/"
+        class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600"
+      >
+        Ir al catálogo
+      </a>
+      <a
+        routerLink="/admin/productos"
+        class="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600"
+      >
+        Registrar producto
+      </a>
+    </div>
+  </header>
+
+  <div
+    *ngIf="cargando()"
+    class="rounded-3xl border border-slate-200 bg-white/80 px-6 py-5 text-sm text-slate-500 shadow-sm"
+  >
+    Consolidando ventas recientes...
+  </div>
+
+  <div
+    *ngIf="error() as err"
+    class="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm font-semibold text-rose-600 shadow-sm"
+  >
+    {{ err }}
+  </div>
+
+  <ng-container *ngIf="!cargando() && !error()">
+    <div
+      *ngIf="!tienePedidos()"
+      class="rounded-3xl border border-slate-200 bg-white/80 px-6 py-5 text-sm font-medium text-slate-500 shadow-sm"
+    >
+      Todavía no registras ventas. Cuando lleguen tus primeros pedidos verás aquí su consolidado.
+    </div>
+
+    <div *ngIf="tienePedidos()" class="space-y-10">
+      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Pedidos totales</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">{{ resumen().totalOrders }}</p>
+          <p class="text-sm text-slate-500">Movimientos registrados en el periodo consultado.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Ingresos</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">
+            {{ resumen().totalRevenue | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+          </p>
+          <p class="text-sm text-slate-500">Incluye impuestos y envíos asociados.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Ticket promedio</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">
+            {{ resumen().averageTicket | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+          </p>
+          <p class="text-sm text-slate-500">Promedio por pedido completado.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Costos asociados</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">
+            {{ (resumen().totalTax + resumen().totalShipping) | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+          </p>
+          <p class="text-sm text-slate-500">
+            Impuestos: {{ resumen().totalTax | currency : 'USD' : 'symbol-narrow' : '1.2-2' }} · Envíos:
+            {{ resumen().totalShipping | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+          </p>
+        </article>
+      </section>
+
+      <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <section class="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-sm">
+          <header class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-semibold text-slate-900">Pedidos recientes</h2>
+              <p class="text-sm text-slate-500">Detalle de las últimas ventas recibidas.</p>
+            </div>
+            <span class="text-xs uppercase tracking-[0.3em] text-slate-400">
+              {{ pedidos().length }} registros
+            </span>
+          </header>
+
+          <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+              <thead class="bg-slate-50/80 text-slate-500">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">
+                    Pedido
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">
+                    Cliente
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-right font-semibold uppercase tracking-[0.12em]">
+                    Total
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">
+                    Estado
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">
+                    Pago
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">
+                    Fecha
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 bg-white">
+                <tr
+                  *ngFor="let pedido of ultimosPedidos(); trackBy: trackByOrder"
+                  class="transition hover:bg-amber-50/40"
+                >
+                  <td class="px-6 py-3 text-sm font-semibold text-slate-700">
+                    {{ pedido.order_number || ('#' + pedido.order_id) }}
+                  </td>
+                  <td class="px-6 py-3 text-sm text-slate-500">
+                    {{ pedido.customer_email || '—' }}
+                  </td>
+                  <td class="px-6 py-3 text-right text-sm font-semibold text-slate-700">
+                    {{ pedido.total | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+                  </td>
+                  <td class="px-6 py-3 text-sm">
+                    <span
+                      class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                      [ngClass]="claseEstado(pedido.status)"
+                    >
+                      {{ formatearEstado(pedido.status) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-sm">
+                    <span
+                      class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                      [ngClass]="claseEstado(pedido.payment_status)"
+                    >
+                      {{ formatearEstado(pedido.payment_status) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-sm text-slate-500">
+                    {{ pedido.placed_at || pedido.updated_at | date : 'medium' : undefined : 'es-EC' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="flex flex-col gap-6">
+          <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
+            <header class="mb-4">
+              <h3 class="text-lg font-semibold text-slate-900">Estados de pedidos</h3>
+              <p class="text-sm text-slate-500">
+                Seguimiento de los movimientos en tu flujo de cumplimiento.
+              </p>
+            </header>
+            <ul class="flex flex-col gap-3 text-sm">
+              <li
+                class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
+              >
+                <span class="text-slate-500">Completados</span>
+                <span class="text-lg font-semibold text-emerald-600">{{ resumen().completed }}</span>
+              </li>
+              <li
+                class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
+              >
+                <span class="text-slate-500">Pendientes</span>
+                <span class="text-lg font-semibold text-amber-600">{{ resumen().pending }}</span>
+              </li>
+              <li
+                class="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
+              >
+                <span class="text-slate-500">Cancelados</span>
+                <span class="text-lg font-semibold text-rose-600">{{ resumen().cancelled }}</span>
+              </li>
+            </ul>
+            <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-500">
+              Desglose por estado:
+              <span class="mt-2 block text-slate-600">
+                <ng-container *ngFor="let estado of resumenPorEstado(); let last = last">
+                  {{ formatearEstado(estado.status) }} ({{ estado.cantidad }})<span *ngIf="!last"> · </span>
+                </ng-container>
+              </span>
+            </div>
+          </section>
+
+          <section class="rounded-3xl border border-amber-200 bg-amber-50/80 p-6 shadow-sm">
+            <header class="mb-4">
+              <h3 class="text-lg font-semibold text-amber-700">Ventas por día</h3>
+              <p class="text-sm text-amber-700/80">
+                Suma de ingresos diarios para detectar tendencias de compra.
+              </p>
+            </header>
+            <ul class="flex flex-col gap-3 text-sm text-amber-700">
+              <li
+                *ngFor="let dia of ventasPorDia(); trackBy: trackByDia"
+                class="flex items-center justify-between rounded-2xl border border-amber-200 bg-white px-4 py-3"
+              >
+                <div>
+                  <p class="font-semibold">
+                    {{ dia.date | date : 'EEEE d MMM' : undefined : 'es-EC' }}
+                  </p>
+                  <p class="text-xs text-amber-500">
+                    {{ dia.orders }} {{ dia.orders === 1 ? 'pedido' : 'pedidos' }}
+                  </p>
+                </div>
+                <span class="text-lg font-semibold text-amber-600">
+                  {{ dia.total | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+                </span>
+              </li>
+              <li *ngIf="!ventasPorDia().length" class="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-center text-sm text-amber-600">
+                Aún no hay suficientes registros para calcular la curva diaria.
+              </li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </ng-container>
+</section>

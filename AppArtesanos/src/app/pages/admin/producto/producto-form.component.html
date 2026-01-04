@@ -1,0 +1,80 @@
+<section class="admin">
+  <header>
+    <h1>Registrar nuevo producto</h1>
+    <p>Completa la ficha para que el producto quede disponible en el catálogo público.</p>
+    <a routerLink="/" class="link">← Volver al catálogo</a>
+  </header>
+
+  <div class="estado" *ngIf="cargando()">Cargando datos iniciales…</div>
+  <div class="estado error" *ngIf="error() as err">{{ err }}</div>
+  <div class="estado success" *ngIf="mensaje() as msg">{{ msg }}</div>
+
+  <form [formGroup]="formulario" (ngSubmit)="guardar()">
+    <div class="grid">
+      <label>
+        SKU *
+        <input formControlName="sku" type="text" placeholder="CER-101" />
+      </label>
+      <label>
+        Nombre *
+        <input formControlName="name" type="text" placeholder="Nombre del producto" />
+      </label>
+    </div>
+
+    <div class="grid">
+      <label>
+        Categoría *
+        <select formControlName="category_slug">
+          <option value="" disabled>Selecciona</option>
+          <option *ngFor="let categoria of categorias()" [value]="categoria.slug">
+            {{ categoria.name }}
+          </option>
+        </select>
+      </label>
+      <label>
+        Taller / Artesano *
+        <select formControlName="artisan_workshop">
+          <option value="" disabled>Selecciona</option>
+          <option *ngFor="let artesano of artesanos()" [value]="artesano.workshop_name">
+            {{ artesano.workshop_name }}
+          </option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid">
+      <label>
+        Precio USD *
+        <input formControlName="price" type="number" min="0" step="0.01" />
+      </label>
+      <label>
+        Stock inicial *
+        <input formControlName="stock" type="number" min="0" />
+      </label>
+      <label>
+        Distintivo
+        <input formControlName="badge_label" type="text" placeholder="Nuevo, Destacado..." />
+      </label>
+    </div>
+
+    <label>
+      Imagen (URL)
+      <input formControlName="image_url" type="url" placeholder="https://..." />
+    </label>
+
+    <label>
+      Descripción
+      <textarea formControlName="description" rows="4" placeholder="Describe la historia detrás de la pieza."></textarea>
+    </label>
+
+    <div class="resumen">
+      <span>Precio previo: {{ resumenPrecio() | currency : 'USD' : 'symbol-narrow' }}</span>
+    </div>
+
+    <div class="acciones">
+      <button type="submit" class="btn-primary" [disabled]="procesando() || cargando()">
+        {{ procesando() ? 'Guardando...' : 'Registrar producto' }}
+      </button>
+    </div>
+  </form>
+</section>

@@ -1,0 +1,397 @@
+<section class="mx-auto max-w-6xl space-y-12 px-6 py-12">
+  <div class="grid gap-8 lg:grid-cols-[1.8fr_1fr]">
+    <div class="relative overflow-hidden rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-amber-100 p-10 shadow-md">
+      <div class="absolute -left-16 -top-16 h-40 w-40 rounded-full bg-amber-200/70 blur-3xl"></div>
+      <div class="absolute -bottom-12 -right-12 h-48 w-48 rounded-full bg-amber-300/60 blur-3xl"></div>
+      <div class="relative space-y-6">
+        <span class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-amber-600">
+          Productos hechos a mano
+        </span>
+        <div class="space-y-3">
+          <h1 class="text-3xl font-semibold text-slate-900 sm:text-4xl">
+            Hecho a mano, hecho en Ecuador.
+          </h1>
+          <p class="max-w-xl text-sm text-slate-600 sm:text-base">
+            Conecta con los talleres artesanales del pa&iacute;s, descubre sus historias y lleva a casa productos con identidad.
+          </p>
+        </div>
+        <label class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:rounded-full sm:p-2">
+          <div class="flex items-center gap-3">
+            <span aria-hidden="true" class="text-lg text-slate-400">🔍</span>
+            <input
+              type="search"
+              placeholder="Busca por producto, artesano o t&eacute;cnica"
+              class="w-full border-none bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+              [value]="query()"
+              (input)="actualizarBusqueda($any($event.target).value)"
+            />
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+            (click)="cargarProductos()"
+          >
+            <span aria-hidden="true">⟳</span>
+            Actualizar cat&aacute;logo
+          </button>
+        </label>
+        <div class="flex flex-wrap items-center gap-3">
+          <a
+            routerLink="/cart"
+            class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-600 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
+          >
+            <span>Ver carrito</span>
+            <span
+              *ngIf="totalItems()"
+              class="inline-flex min-w-[1.5rem] justify-center rounded-full bg-amber-500 px-2 py-[0.175rem] text-xs font-semibold text-white shadow-sm"
+            >
+              {{ totalItems() }}
+            </span>
+            <span *ngIf="!totalItems()" class="text-xs font-medium text-slate-400">Vac&iacute;o</span>
+          </a>
+          <a
+            routerLink="/admin/productos"
+            class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+          >
+            Registrar producto
+          </a>
+          <span class="text-xs uppercase tracking-[0.25em] text-slate-400">
+            Experiencia integral · Comercio justo
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-sm">
+      <div class="space-y-2">
+        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Resumen del cat&aacute;logo</p>
+        <p class="text-4xl font-semibold text-slate-900">{{ inventorySummary().totalProducts }}</p>
+        <p class="text-sm text-slate-500">Piezas activas disponibles.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-sm font-medium text-slate-600">
+        <div class="rounded-2xl bg-slate-50 p-4 shadow-inner">
+          <p class="text-xs uppercase tracking-[0.25em] text-slate-400">Unidades</p>
+          <p class="mt-2 text-xl font-semibold text-slate-900">{{ inventorySummary().totalUnits }}</p>
+          <p class="text-xs text-slate-400">Stock total disponible.</p>
+        </div>
+        <div class="rounded-2xl bg-amber-50 p-4 shadow-inner">
+          <p class="text-xs uppercase tracking-[0.25em] text-amber-500">Valor</p>
+          <p class="mt-2 text-xl font-semibold text-slate-900">
+            {{ inventorySummary().totalValue | currency : 'USD' : 'symbol-narrow' }}
+          </p>
+          <p class="text-xs text-amber-600">Inventario valorizado.</p>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-xs leading-relaxed text-slate-500">
+        <span class="font-semibold text-slate-700">Sincronizaci&oacute;n:</span>
+        {{ inventoryTimestamp() ?? 'En curso...' }}
+        <br />
+        <button
+          type="button"
+          class="mt-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.75rem] font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600"
+          (click)="cargarProductos()"
+        >
+          <span aria-hidden="true">⟳</span>
+          Volver a consultar
+        </button>
+      </div>
+      <div class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-700">
+        <p class="font-semibold">Carrito en marcha</p>
+        <p class="mt-1 text-xs text-emerald-600">
+          {{ totalItems() ? (totalItems() + ' piezas · ' + (totalAmount() | currency : 'USD' : 'symbol-narrow')) : 'Explora el cat&aacute;logo y agrega tus favoritos.' }}
+        </p>
+      </div>
+    </aside>
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+      Vista principal
+    </div>
+    <div class="flex gap-2 rounded-full border border-slate-200 bg-white/80 p-1 text-sm font-semibold text-slate-600">
+      <button
+        type="button"
+        class="rounded-full px-4 py-2 transition"
+        (click)="cambiarVista('store')"
+        [ngClass]="{
+          'bg-amber-500 text-white shadow': activeView() === 'store',
+          'text-slate-600 hover:text-amber-600': activeView() !== 'store'
+        }"
+      >
+        Tienda
+      </button>
+      <button
+        type="button"
+        class="rounded-full px-4 py-2 transition"
+        (click)="cambiarVista('inventory')"
+        [ngClass]="{
+          'bg-amber-500 text-white shadow': activeView() === 'inventory',
+          'text-slate-600 hover:text-amber-600': activeView() !== 'inventory'
+        }"
+      >
+        Inventario
+      </button>
+    </div>
+  </div>
+
+  <section *ngIf="activeView() === 'store'; else inventoryView" class="space-y-10">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <p class="text-sm text-slate-500">{{ productCountLabel() }}</p>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 transition hover:border-amber-300 hover:text-amber-600"
+        *ngIf="filtrosActivos()"
+        (click)="limpiarFiltros()"
+      >
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        *ngFor="let categoria of categorias()"
+        type="button"
+        class="rounded-full border px-4 py-2 text-sm font-semibold transition"
+        (click)="seleccionarCategoria(categoria)"
+        [ngClass]="{
+          'border-amber-400 bg-amber-500 text-white shadow': selectedCategory() === categoria,
+          'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:text-amber-600': selectedCategory() !== categoria
+        }"
+      >
+        {{ categoria }}
+      </button>
+    </div>
+
+    <div
+      *ngIf="cargando()"
+      class="rounded-3xl border border-slate-200 bg-white/80 px-6 py-5 text-sm text-slate-500 shadow-sm"
+    >
+      Estamos preparando las piezas...
+    </div>
+
+    <div
+      *ngIf="error() as err"
+      class="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm font-semibold text-rose-600 shadow-sm"
+    >
+      {{ err }}
+    </div>
+
+    <div
+      *ngIf="!cargando() && !error() && !filteredProductos().length"
+      class="rounded-3xl border border-slate-200 bg-white/80 px-6 py-5 text-sm font-medium text-slate-500 shadow-sm"
+    >
+      No encontramos coincidencias. Ajusta la b&uacute;squeda o explora otra categor&iacute;a.
+    </div>
+
+    <div
+      *ngIf="!cargando() && !error() && filteredProductos().length"
+      class="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+    >
+      <article
+        class="group flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+        *ngFor="let producto of filteredProductos()"
+      >
+        <div class="relative">
+          <img
+            [ngSrc]="producto.image_url || placeholder"
+            [alt]="producto.name"
+            width="360"
+            height="240"
+            class="h-56 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          />
+          <span
+            *ngIf="producto.badge_label"
+            class="absolute left-4 top-4 inline-flex items-center rounded-full bg-amber-500/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow-sm"
+          >
+            {{ producto.badge_label }}
+          </span>
+        </div>
+        <div class="flex flex-1 flex-col gap-3 p-6">
+          <div class="space-y-1">
+            <h3 class="text-lg font-semibold text-slate-900">{{ producto.name }}</h3>
+            <p class="text-sm text-slate-500">{{ producto.category }} &middot; {{ producto.artisan }}</p>
+          </div>
+          <p class="text-sm text-slate-600">
+            {{ producto.description || 'Producto artesanal &uacute;nico.' }}
+          </p>
+          <div class="mt-auto flex flex-wrap items-center justify-between gap-3 pt-2">
+            <div class="text-lg font-semibold text-amber-600">
+              {{ importeProducto(producto) | currency : 'USD' : 'symbol-narrow' }}
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span
+                class="inline-flex h-2 w-2 rounded-full"
+                [ngClass]="producto.stock <= 5 ? 'bg-amber-500' : 'bg-emerald-500'"
+              ></span>
+              Stock: {{ producto.stock }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+            (click)="agregarAlCarrito(producto)"
+            [attr.aria-label]="'A&ntilde;adir ' + producto.name + ' al carrito'"
+          >
+            <span aria-hidden="true">Agregar</span>
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <ng-template #inventoryView>
+    <section class="space-y-10">
+      <header class="space-y-3">
+        <span class="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+          Panel interno
+        </span>
+        <h2 class="text-3xl font-semibold text-slate-900">Gesti&oacute;n de inventario</h2>
+        <p class="text-sm text-slate-500">
+          Consulta existencias, alertas y accede al formulario de registro.
+        </p>
+      </header>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Productos activos</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">{{ inventorySummary().totalProducts }}</p>
+          <p class="mt-1 text-sm text-slate-500">Art&iacute;culos listos para la venta.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Unidades disponibles</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">{{ inventorySummary().totalUnits }}</p>
+          <p class="mt-1 text-sm text-slate-500">Suma de todo el stock f&iacute;sico.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Valor estimado</p>
+          <p class="mt-2 text-4xl font-semibold text-slate-900">
+            {{ inventorySummary().totalValue | currency : 'USD' : 'symbol-narrow' }}
+          </p>
+          <p class="mt-1 text-sm text-slate-500">Inventario valorizado a precio de venta.</p>
+        </article>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <section class="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-sm">
+          <header class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xl font-semibold text-slate-900">Existencias por producto</h3>
+              <p class="text-sm text-slate-500">Organiza y revisa el stock con claridad.</p>
+            </div>
+            <div class="text-right text-xs uppercase tracking-[0.3em] text-slate-400">
+              {{ inventoryTimestamp() ? ('Actualizado: ' + inventoryTimestamp()) : 'Sincronizando...' }}
+            </div>
+          </header>
+          <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+              <thead class="bg-slate-50/80 text-slate-500">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">SKU</th>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">Producto</th>
+                  <th scope="col" class="px-6 py-3 text-left font-semibold uppercase tracking-[0.12em]">Taller</th>
+                  <th scope="col" class="px-6 py-3 text-right font-semibold uppercase tracking-[0.12em]">Precio</th>
+                  <th scope="col" class="px-6 py-3 text-right font-semibold uppercase tracking-[0.12em]">Stock</th>
+                  <th scope="col" class="px-6 py-3 text-right font-semibold uppercase tracking-[0.12em]">Valor</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 bg-white">
+                <tr *ngIf="cargando()">
+                  <td colspan="6" class="px-6 py-6 text-center text-sm text-slate-400">Recuperando inventario...</td>
+                </tr>
+                <tr *ngIf="!cargando() && !productos().length">
+                  <td colspan="6" class="px-6 py-6 text-center text-sm text-slate-400">
+                    A&uacute;n no registras productos. Usa el formulario para comenzar.
+                  </td>
+                </tr>
+                <tr
+                  *ngFor="let producto of productos(); trackBy: trackByProducto"
+                  class="transition hover:bg-amber-50/40"
+                >
+                  <td class="px-6 py-3 text-sm font-medium text-slate-500">{{ producto.sku }}</td>
+                  <td class="px-6 py-3 text-sm text-slate-700">{{ producto.name }}</td>
+                  <td class="px-6 py-3 text-sm text-slate-500">{{ producto.artisan }}</td>
+                  <td class="px-6 py-3 text-right text-sm font-medium text-slate-700">
+                    {{ producto.price | currency : 'USD' : 'symbol-narrow' }}
+                  </td>
+                  <td
+                    class="px-6 py-3 text-right text-sm font-semibold"
+                    [ngClass]="producto.stock <= 5 ? 'text-amber-600' : 'text-slate-700'"
+                  >
+                    {{ producto.stock }}
+                  </td>
+                  <td class="px-6 py-3 text-right text-sm font-medium text-slate-700">
+                    {{ (producto.price * producto.stock) | currency : 'USD' : 'symbol-narrow' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <span>&iquest;Necesitas agregar una pieza nueva?</span>
+            <a
+              routerLink="/admin/productos"
+              class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-emerald-600"
+            >
+              Abrir formulario
+            </a>
+          </div>
+        </section>
+
+        <aside class="flex flex-col gap-5">
+          <section class="rounded-3xl border border-amber-200 bg-amber-50/80 p-6 shadow-sm">
+            <header class="mb-4">
+              <h3 class="text-lg font-semibold text-amber-700">Alertas de stock bajo</h3>
+              <p class="text-sm text-amber-700/80">Vigila los productos que requieren reposici&oacute;n.</p>
+            </header>
+            <ul class="flex flex-col gap-3 text-sm text-amber-700">
+              <li
+                *ngIf="!lowStock().length"
+                class="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-center text-sm text-amber-600"
+              >
+                Sin alertas por el momento.
+              </li>
+              <li
+                *ngFor="let producto of lowStock()"
+                class="rounded-2xl border border-amber-200 bg-white px-4 py-3 font-medium text-amber-700"
+              >
+                <div class="flex flex-col">
+                  <span>{{ producto.name }}</span>
+                  <span class="text-xs text-amber-500">Stock actual: {{ producto.stock }} • Taller {{ producto.artisan }}</span>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 text-xs leading-relaxed text-slate-500 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-700">Consejos r&aacute;pidos</h3>
+            <ul class="mt-3 flex list-disc flex-col gap-2 pl-5">
+              <li>Actualiza el inventario tras cada entrega desde el formulario.</li>
+              <li>Refuerza la ficha de cada producto con historias y materiales.</li>
+              <li>Comparte el cat&aacute;logo en redes para impulsar a los talleres.</li>
+            </ul>
+            <a
+              routerLink="/admin/resumen"
+              class="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.75rem] font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-600"
+            >
+              Ver resumen de ventas
+            </a>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </ng-template>
+</section>
+
+<div
+  *ngIf="mensaje() as msg"
+  class="toast-notification"
+  role="status"
+  aria-live="polite"
+>
+  <span class="icon" aria-hidden="true">✔</span>
+  <div class="text">
+    <p>{{ msg }}</p>
+    <small>Revisa el carrito cuando quieras finalizar tu compra.</small>
+  </div>
+</div>

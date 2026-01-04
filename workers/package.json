@@ -1,0 +1,16 @@
+{
+  "name": "workers-artesanos",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Workers para eventos de pedidos con RabbitMQ",
+  "main": "worker-pedidos-creados.js",
+  "scripts": {
+    "iniciar:pedidos": "node worker-pedidos-creados.js",
+    "enviar:pedido": "node publicador-pedido-prueba.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "dotenv": "^17.2.3",
+    "ws": "^8.18.0"
+  }
+}

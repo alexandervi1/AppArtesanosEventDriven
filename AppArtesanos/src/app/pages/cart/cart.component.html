@@ -1,0 +1,45 @@
+<section class="cart">
+  <header>
+    <h1>Tu carrito</h1>
+    <p *ngIf="totalItems() > 0">
+      {{ totalItems() }} {{ totalItems() === 1 ? 'artículo' : 'artículos' }} ·
+      {{ totalAmount() | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}
+    </p>
+    <p class="empty" *ngIf="totalItems() === 0">
+      Todavía no agregas productos. Inspírate en el
+      <a routerLink="/" class="link">catálogo</a>.
+    </p>
+  </header>
+
+  <div class="items" *ngIf="totalItems() > 0">
+    <article class="item" *ngFor="let item of items()">
+      <div class="info">
+        <h3>{{ item.name }}</h3>
+        <p class="muted">{{ item.sku }}</p>
+      </div>
+      <div class="controls">
+        <div class="qty">
+          <button type="button" (click)="disminuir(item)" aria-label="Reducir">–</button>
+          <input
+            type="number"
+            [value]="item.quantity"
+            min="1"
+            max="99"
+            (change)="actualizarCantidad(item, $event.target.value)"
+          />
+          <button type="button" (click)="incrementar(item)" aria-label="Incrementar">+</button>
+        </div>
+        <div class="price">{{ (item.price * item.quantity) | currency : 'USD' : 'symbol-narrow' }}</div>
+        <button type="button" class="link remove" (click)="eliminar(item)">Quitar</button>
+      </div>
+    </article>
+  </div>
+
+  <footer *ngIf="totalItems() > 0">
+    <div>
+      <small>Subtotal estimado</small>
+      <strong>{{ totalAmount() | currency : 'USD' : 'symbol-narrow' : '1.2-2' }}</strong>
+    </div>
+    <a routerLink="/checkout" class="btn-primary">Proceder al pago</a>
+  </footer>
+</section>
