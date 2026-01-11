@@ -30,6 +30,17 @@ Dashboard Angular (Resumen de ventas en tiempo real)
 - **workers/**: Microservicios en Node.js 18+. Arquitectura modular (`lib/rabbitmq`, `lib/websocket`) con reconexión automática y gestión por `.env`.
 - **RabbitMQ**: Broker de mensajería para desacoplar el procesamiento de pedidos.
 
+### Arquitectura API (Refactor: Mediator & Clean Code)
+
+La API ha evolucionado para seguir principios de **Clean Code** y **Single Responsibility**.
+
+*   **Patrón Mediator (`api/patterns/OrderMediator.php`)**: Orquestador central para la creación y cancelación de pedidos. Desacopla el controlador de la lógica de negocio compleja.
+*   **Servicios (`api/services/`)**:
+    *   `InventoryService`: Gestión de stock y movimientos.
+    *   `OrderService`: Persistencia de órdenes.
+    *   `CartService`: Lógica de validación y estado del carrito.
+    *   `NotificationService`: Publicación resiliente de eventos (RabbitMQ).
+
 ## Requisitos previos
 
 - **Node.js 18+** y npm.
@@ -132,7 +143,9 @@ EcommerceArtesanos/
 ├── AppArtesanos/
 │   ├── api/                  # Backend Modular
 │   │   ├── includes/         # Config, DB, Helpers, Events
-│   │   ├── resources/        # Lógica de negocio (Orders, Products...)
+│   │   ├── patterns/         # Patrones de Diseño (Mediator)
+│   │   ├── services/         # Servicios de Negocio (Inventory, Cart, Order)
+│   │   ├── resources/        # Controladores (Orders, Products...)
 │   │   ├── vendor/           # Dependencias Composer
 │   │   └── api.php           # Router principal
 │   ├── database/             # Scripts SQL
