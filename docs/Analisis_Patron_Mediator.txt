@@ -1,0 +1,143 @@
+ANÁLISIS DEL PATRÓN MEDIATOR EN ECOMMERCEARTESANOS
+==================================================
+
+RESUMEN EJECUTIVO
+-----------------
+La implementación del Patrón Mediator en esta aplicación es SÓLIDA Y FUNCIONAL, 
+cumpliendo con el objetivo principal de desacoplar la lógica de negocio compleja 
+del controlador HTTP. Es una excelente base para una exposición académica.
+
+
+1. TEORÍA DEL PATRÓN MEDIATOR
+-----------------------------
+
+Definición (GoF):
+"Define un objeto que encapsula cómo un conjunto de objetos interactúan. 
+El Mediator promueve el acoplamiento débil evitando que los objetos se 
+refieran explícitamente entre sí."
+
+Componentes Clásicos:
+- Mediator (Interface): Define el contrato de comunicación (notify()).
+- ConcreteMediator: Implementa la lógica de coordinación entre colegas.
+- Colleague: Componentes que interactúan a través del Mediator, no directamente entre sí.
+
+
+2. MAPEO TEORÍA → IMPLEMENTACIÓN
+--------------------------------
+
+Componente Teórico         | Archivo en el Proyecto                    | Descripción
+---------------------------|-------------------------------------------|------------------------------------------
+Mediator (Interface)       | api/patterns/Mediator.php                 | Define notify(object $sender, string $event, array $data)
+ConcreteMediator           | api/patterns/OrderMediator.php            | Implementa placeOrder() y cancelOrder()
+Colleague: Inventory       | api/services/InventoryService.php         | Gestiona stock y movimientos
+Colleague: Cart            | api/services/CartService.php              | Valida y gestiona carritos
+Colleague: Order           | api/services/OrderService.php             | Persiste órdenes en BD
+Colleague: Notification    | api/services/NotificationService.php      | Publica eventos a RabbitMQ
+
+
+3. FORTALEZAS DE LA IMPLEMENTACIÓN ✓
+-------------------------------------
+
+3.1 Desacoplamiento Efectivo
+- ANTES: orders.php contenía +300 líneas mezclando SQL, validaciones y lógica de negocio.
+- DESPUÉS: orders.php tiene ~90 líneas y solo delega al Mediator.
+
+3.2 Single Responsibility Principle (SRP)
+Cada servicio tiene una única responsabilidad:
+- InventoryService → Solo stock
+- CartService → Solo carrito
+- OrderService → Solo persistencia
+- NotificationService → Solo eventos
+
+3.3 Transaccionalidad Centralizada
+El Mediator controla el beginTransaction() / commit() / rollBack(), 
+garantizando atomicidad en toda la operación.
+
+3.4 Resiliencia en Notificaciones
+La publicación a RabbitMQ está envuelta en try/catch separado, 
+permitiendo que la orden se cree aunque falle el evento (diseño "non-blocking").
+
+3.5 Inyección de Dependencias
+El constructor de OrderMediator recibe todos los servicios, facilitando testing y sustitución.
+
+
+4. ÁREAS DE MEJORA (PARA MENCIONAR EN EXPOSICIÓN)
+--------------------------------------------------
+
+4.1 Método notify() No Utilizado
+La interfaz Mediator define notify(), pero OrderMediator lo implementa vacío. 
+En un patrón Mediator "puro", los Colleagues llamarían a notify() y el Mediator reaccionaría.
+
+JUSTIFICACIÓN VÁLIDA: Para este caso de uso (creación de órdenes), el flujo es 
+lineal y predecible. placeOrder() es más explícito que usar notify("orderPlaced", $data).
+
+RECOMENDACIÓN: Mencionar en la exposición que es una VARIANTE PRAGMÁTICA del patrón.
+
+4.2 Queries Directas en cancelOrder()
+El método cancelOrder() ejecuta SQL directamente en lugar de delegar a InventoryService.
+
+RECOMENDACIÓN: Agregar un método InventoryService::restoreStock() para mantener la consistencia.
+
+4.3 Sin Autoloading PSR-4
+Los archivos usan require_once manuales. Esto es técnicamente correcto pero no "moderno".
+
+EN LA EXPOSICIÓN: Explicar que en un proyecto con Composer configurado para autoload PSR-4, 
+estos require_once desaparecerían.
+
+
+5. PUNTOS CLAVE PARA LA EXPOSICIÓN
+----------------------------------
+
+DIAPOSITIVA 1: PROBLEMA
+- Mostrar fragmento del orders.php ANTES (monolítico, 300+ líneas).
+- Explicar: "Alto acoplamiento, difícil de testear, viola SRP".
+
+DIAPOSITIVA 2: SOLUCIÓN
+- Diagrama de clases mostrando Mediator en el centro y Servicios alrededor.
+- Flujo: Controller → Mediator → Services → DB/RabbitMQ.
+
+DIAPOSITIVA 3: CÓDIGO
+- Mostrar el constructor de OrderMediator (inyección de dependencias).
+- Mostrar el método placeOrder() resumido (pasos 1-9 numerados).
+
+DIAPOSITIVA 4: BENEFICIOS
+- Testabilidad (mockear servicios).
+- Mantenibilidad (cambiar un servicio no afecta otros).
+- Escalabilidad (añadir nuevos servicios sin modificar el core).
+
+DIAPOSITIVA 5: VARIANTE PRAGMÁTICA
+- Explicar por qué notify() está vacío.
+- Mencionar que es una adaptación válida para flujos lineales.
+
+
+6. COMPARATIVA: ANTES VS DESPUÉS
+--------------------------------
+
+Aspecto                          | ANTES                                    | DESPUÉS
+---------------------------------|------------------------------------------|------------------------------------------
+Líneas de código en controller   | ~300                                     | ~90
+Número de responsabilidades      | 5+ (DB, Stock, Cart, Validation, Events) | 1 (Delegación)
+Facilidad de testing             | Baja (mock de PDO complejo)              | Alta (mock de servicios)
+Transaccionalidad                | Mezclada en el controller                | Centralizada en Mediator
+Añadir nuevo paso (ej: email)    | Modificar controller                     | Añadir servicio + 1 línea
+
+
+7. CONCLUSIÓN
+-------------
+
+La implementación del Patrón Mediator en EcommerceArtesanos es SUFICIENTE Y APROPIADA 
+para el contexto del proyecto. Demuestra comprensión del patrón y aplicación práctica 
+de Clean Code.
+
+Para la exposición, resaltar:
+1. El problema real que resuelve (antes/después).
+2. El mapeo teoría-práctica.
+3. Las decisiones de diseño (por qué notify() está vacío).
+4. Los beneficios tangibles (menos código, más mantenibilidad).
+
+
+CALIFICACIÓN DE IMPLEMENTACIÓN: 8.5/10
+--------------------------------------
+- Pierde 0.5 por SQL directo en cancelOrder().
+- Pierde 0.5 por notify() no utilizado.
+- Pierde 0.5 por falta de autoloading PSR-4.

@@ -1,0 +1,253 @@
+ARQUITECTURA EVENT-DRIVEN EN ECOMMERCEARTESANOS
+================================================
+
+RESUMEN EJECUTIVO
+-----------------
+EcommerceArtesanos implementa una arquitectura Event-Driven (Dirigida por Eventos) 
+que desacopla el procesamiento de pedidos del flujo principal de la aplicación, 
+permitiendo escalabilidad, resiliencia y actualizaciones en tiempo real.
+
+
+1. ¿QUÉ ES EVENT-DRIVEN ARCHITECTURE (EDA)?
+-------------------------------------------
+
+Definición:
+"Patrón de diseño donde la producción, detección y consumo de eventos 
+guían el flujo de la aplicación."
+
+Características Principales:
+- Asincronía: El productor no espera respuesta del consumidor.
+- Desacoplamiento: Productores y consumidores no se conocen directamente.
+- Escalabilidad: Se pueden añadir múltiples consumidores sin modificar el productor.
+- Resiliencia: Si un consumidor falla, los eventos se encolan hasta que se recupere.
+
+
+2. COMPONENTES DE LA ARQUITECTURA
+---------------------------------
+
+PRODUCTOR DE EVENTOS (Publisher)
+--------------------------------
+Archivo: api/includes/events.php + api/services/NotificationService.php
+Tecnología: PHP + php-amqplib
+
+Función:
+- Cuando se crea una orden, publica un evento "order.created" a RabbitMQ.
+- El evento contiene: order_id, order_number, customer_email, items, total.
+
+Código clave:
+    $channel->basic_publish($msg, 'orders.events', 'order.created');
+
+
+BROKER DE MENSAJES (Message Broker)
+-----------------------------------
+Tecnología: RabbitMQ 3.12+
+Puerto AMQP: 5672
+Puerto Management UI: 15672
+
+Configuración:
+- Exchange: "orders.events" (tipo: topic)
+- Queue: "orders.created"
+- Routing Key: "order.created"
+
+Función:
+- Recibe eventos del productor (API PHP).
+- Enruta eventos a las colas correspondientes.
+- Garantiza entrega (persistencia de mensajes).
+
+
+CONSUMIDOR DE EVENTOS (Consumer/Worker)
+----------------------------------------
+Archivo: workers/worker-pedidos-creados.js
+Tecnología: Node.js 18+ con amqplib
+
+Función:
+- Escucha la cola "orders.created".
+- Procesa cada evento (ej: logging, notificaciones, actualizaciones).
+- Reenvía datos a clientes conectados vía WebSocket.
+
+Código clave:
+    channel.consume('orders.created', (msg) => {
+        const order = JSON.parse(msg.content.toString());
+        console.log('[Worker] Received Order ->', order.order_number);
+        broadcastToClients(order);
+        channel.ack(msg);
+    });
+
+
+CLIENTE EN TIEMPO REAL (Real-Time Client)
+-----------------------------------------
+Archivo: AppArtesanos/src/app/servicios/websocket.service.ts
+Tecnología: Angular 20 + WebSocket nativo
+
+Función:
+- Se conecta al Worker via WebSocket (ws://localhost:3005).
+- Recibe notificaciones de nuevos pedidos instantáneamente.
+- Actualiza la UI (Dashboard) sin necesidad de refresh.
+
+
+3. FLUJO COMPLETO DE UN EVENTO
+------------------------------
+
+    [1] Usuario finaliza compra en Angular
+                    ↓
+    [2] Angular envía POST a API PHP (/api/api.php?resource=orders)
+                    ↓
+    [3] API PHP (OrderMediator) crea la orden en MySQL
+                    ↓
+    [4] NotificationService publica evento a RabbitMQ
+                    ↓
+    [5] RabbitMQ enruta el mensaje a la cola "orders.created"
+                    ↓
+    [6] Worker Node.js consume el mensaje de la cola
+                    ↓
+    [7] Worker procesa y envía notificación por WebSocket
+                    ↓
+    [8] Dashboard Angular recibe la actualización en tiempo real
+
+
+4. BENEFICIOS DE ESTA ARQUITECTURA
+----------------------------------
+
+4.1 Desacoplamiento
+- La API no sabe ni le importa quién consume sus eventos.
+- Se pueden añadir más workers (ej: envío de emails, SMS) sin tocar la API.
+
+4.2 Escalabilidad Horizontal
+- Múltiples instancias del Worker pueden consumir la misma cola.
+- RabbitMQ distribuye la carga automáticamente (Round Robin).
+
+4.3 Resiliencia
+- Si el Worker se cae, los mensajes permanecen en RabbitMQ.
+- Al reiniciar, el Worker procesa los mensajes pendientes.
+
+4.4 Tiempo Real
+- Los usuarios ven actualizaciones instantáneas sin polling.
+- Menor carga en el servidor (no hay peticiones repetitivas).
+
+4.5 Auditoría
+- Cada evento queda registrado en RabbitMQ (si se configura persistencia).
+- Facilita debugging y análisis post-mortem.
+
+
+5. TECNOLOGÍAS UTILIZADAS
+-------------------------
+
+Capa                | Tecnología          | Versión   | Rol
+--------------------|---------------------|-----------|----------------------------------
+Frontend            | Angular             | 20        | UI, WebSocket Client
+API                 | PHP                 | 8.0+      | REST, Event Publisher
+Message Broker      | RabbitMQ            | 3.12+     | Enrutamiento de eventos
+Worker              | Node.js             | 18+       | Event Consumer, WebSocket Server
+Base de Datos       | MySQL/MariaDB       | 8.0+      | Persistencia de datos
+Librería PHP        | php-amqplib         | 3.x       | Cliente AMQP para PHP
+Librería Node       | amqplib             | 0.10+     | Cliente AMQP para Node.js
+
+
+6. CONFIGURACIÓN DE RABBITMQ
+----------------------------
+
+Variables de Entorno (API - config.php):
+    RABBITMQ_HOST=localhost
+    RABBITMQ_PORT=5672
+    RABBITMQ_USER=admin
+    RABBITMQ_PASS=admin
+    RABBITMQ_EXCHANGE_PEDIDOS=orders.events
+    RABBITMQ_RK_PEDIDO_CREADO=order.created
+
+Variables de Entorno (Worker - .env):
+    URL_BROKER_RABBITMQ=amqp://admin:admin@localhost:5672
+    COLA_PEDIDOS_CREADOS=orders.created
+    PUERTO_WEBSOCKET_PEDIDOS=3005
+
+
+7. ESTRUCTURA DE UN EVENTO
+--------------------------
+
+Ejemplo de payload publicado a RabbitMQ:
+
+{
+    "tipo_evento": "pedido-creado",
+    "order_id": 7,
+    "order_number": "ORD-20260104220903-758",
+    "customer_email": "cliente@ejemplo.com",
+    "total": 150.00,
+    "currency": "USD",
+    "items": [
+        {
+            "product_id": 1,
+            "name": "Artesanía de Barro",
+            "quantity": 2,
+            "unit_price": 75.00
+        }
+    ],
+    "timestamp": "2026-01-04T22:09:03Z"
+}
+
+
+8. PATRONES RELACIONADOS
+-------------------------
+
+Esta arquitectura combina varios patrones de diseño:
+
+1. MEDIATOR PATTERN
+   - El OrderMediator coordina la creación de órdenes.
+   - Ver: Analisis_Patron_Mediator.txt
+
+2. OBSERVER PATTERN (Implícito)
+   - RabbitMQ actúa como Subject.
+   - Los Workers son Observers que reaccionan a eventos.
+
+3. PUBLISH-SUBSCRIBE PATTERN
+   - La API publica sin conocer a los suscriptores.
+   - Los Workers se suscriben a colas específicas.
+
+
+9. COMPARATIVA: ARQUITECTURA TRADICIONAL VS EVENT-DRIVEN
+---------------------------------------------------------
+
+Aspecto              | TRADICIONAL (Síncrono)           | EVENT-DRIVEN (Asíncrono)
+---------------------|----------------------------------|----------------------------------
+Flujo                | Request → Process → Response     | Request → Publish → [Queue] → Process
+Acoplamiento         | Alto (llamadas directas)         | Bajo (comunicación por eventos)
+Escalabilidad        | Vertical (más poder de CPU)      | Horizontal (más workers)
+Tiempo de respuesta  | Depende del proceso más lento    | Inmediato (el evento se encola)
+Resiliencia          | Falla en cascada                 | Aislamiento de fallos
+Debugging            | Stack trace lineal               | Requiere correlación de eventos
+
+
+10. COMANDOS PARA VERIFICAR EL SISTEMA
+--------------------------------------
+
+Verificar RabbitMQ:
+    - Acceder a http://localhost:15672 (usuario: admin, pass: admin)
+    - Revisar la cola "orders.created" en la pestaña Queues
+
+Iniciar el Worker:
+    cd workers
+    npm run iniciar:pedidos
+
+Verificar conexión del Worker:
+    El log debe mostrar:
+    [RabbitMQ] Connected successfully
+    [Worker] Listening for events on queue: orders.created
+
+Probar el flujo completo:
+    Invoke-RestMethod -Uri "http://localhost/api/api.php?resource=orders" `
+      -Method Post `
+      -Body '{"cart_id": 6, "status": "pending"}' `
+      -ContentType "application/json"
+
+
+11. CONCLUSIÓN
+--------------
+
+La arquitectura Event-Driven de EcommerceArtesanos representa una implementación 
+moderna y escalable que:
+
+- Separa responsabilidades entre productor y consumidor.
+- Permite actualizaciones en tiempo real sin polling.
+- Facilita la extensión del sistema con nuevos workers.
+- Garantiza resiliencia ante fallos temporales.
+
+Es una excelente demostración de cómo aplicar principios de arquitectura de software 
+en un proyecto real de comercio electrónico.

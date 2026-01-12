@@ -1,0 +1,453 @@
+DIAGRAMAS UML PARA EXPOSICIÓN - ECOMMERCEARTESANOS
+===================================================
+
+Este documento contiene el código fuente de los diagramas UML.
+Para visualizarlos, copia el código en:
+- PlantUML Online: https://www.plantuml.com/plantuml/uml/
+- Mermaid Live: https://mermaid.live/
+
+================================================================================
+DIAGRAMA 1: CLASES - PATRÓN MEDIATOR
+================================================================================
+
+Código PlantUML:
+----------------
+
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FEFEFE
+
+title Diagrama de Clases - Patrón Mediator
+
+interface Mediator {
+    +notify(sender: object, event: string, data: array): mixed
+}
+
+class OrderMediator implements Mediator {
+    -pdo: PDO
+    -inventory: InventoryService
+    -cart: CartService
+    -order: OrderService
+    -notification: NotificationService
+    --
+    +__construct(pdo, inventory, cart, order, notification)
+    +notify(sender, event, data): mixed
+    +placeOrder(cartId: int, params: array): array
+    +cancelOrder(orderId: int): void
+}
+
+class InventoryService {
+    -pdo: PDO
+    --
+    +checkAndReserveStock(productId, quantity, name): void
+    +logMovement(productId, quantity, orderNumber): void
+}
+
+class CartService {
+    -pdo: PDO
+    --
+    +getCart(cartId): array
+    +getCartItems(cartId): array
+    +validateForCheckout(cart, items): void
+    +closeCart(cartId): void
+}
+
+class OrderService {
+    -pdo: PDO
+    --
+    +generateOrderNumber(): string
+    +createOrder(data): int
+    +addOrderItem(orderId, item): void
+    +getOrderDetails(orderId): array
+}
+
+class NotificationService {
+    --
+    +publishOrderCreated(order): void
+}
+
+OrderMediator --> InventoryService : usa
+OrderMediator --> CartService : usa
+OrderMediator --> OrderService : usa
+OrderMediator --> NotificationService : usa
+
+note right of OrderMediator
+  El Mediator coordina todas
+  las interacciones entre
+  los servicios sin que
+  estos se conozcan entre sí
+end note
+
+@enduml
+
+
+================================================================================
+DIAGRAMA 2: SECUENCIA - FLUJO DE CREACIÓN DE ORDEN
+================================================================================
+
+Código PlantUML:
+----------------
+
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+title Diagrama de Secuencia - Creación de Orden
+
+actor Usuario
+participant "Angular\nFrontend" as Angular
+participant "orders.php\n(Controller)" as Controller
+participant "OrderMediator" as Mediator
+participant "CartService" as Cart
+participant "InventoryService" as Inventory
+participant "OrderService" as Order
+participant "NotificationService" as Notif
+database "MySQL" as DB
+queue "RabbitMQ" as RMQ
+participant "Worker\nNode.js" as Worker
+
+Usuario -> Angular: Finalizar Compra
+Angular -> Controller: POST /orders {cart_id: 6}
+
+activate Controller
+Controller -> Mediator: placeOrder(6, params)
+activate Mediator
+
+Mediator -> DB: BEGIN TRANSACTION
+
+Mediator -> Cart: getCart(6)
+Cart -> DB: SELECT * FROM carts
+Cart --> Mediator: cart data
+
+Mediator -> Cart: getCartItems(6)
+Cart -> DB: SELECT * FROM cart_items
+Cart --> Mediator: items[]
+
+Mediator -> Cart: validateForCheckout()
+Cart --> Mediator: OK
+
+loop Para cada item
+    Mediator -> Inventory: checkAndReserveStock()
+    Inventory -> DB: SELECT stock FOR UPDATE
+    Inventory -> DB: UPDATE products SET stock = stock - qty
+    Inventory --> Mediator: stock reservado
+end
+
+Mediator -> Order: createOrder(data)
+Order -> DB: INSERT INTO orders
+Order --> Mediator: orderId = 7
+
+loop Para cada item
+    Mediator -> Order: addOrderItem()
+    Order -> DB: INSERT INTO order_items
+    
+    Mediator -> Inventory: logMovement()
+    Inventory -> DB: INSERT INTO inventory_movements
+end
+
+Mediator -> Cart: closeCart(6)
+Cart -> DB: UPDATE carts SET status = 'converted'
+
+Mediator -> DB: COMMIT
+
+Mediator -> Notif: publishOrderCreated(order)
+Notif -> RMQ: publish("order.created", payload)
+RMQ --> Notif: ACK
+
+Mediator --> Controller: orderDetails
+deactivate Mediator
+
+Controller --> Angular: 201 Created {order}
+deactivate Controller
+
+Angular --> Usuario: "¡Pedido Confirmado!"
+
+== Procesamiento Asíncrono ==
+
+RMQ -> Worker: consume message
+Worker -> Worker: process order
+Worker -> Angular: WebSocket notification
+Angular --> Usuario: Dashboard actualizado
+
+@enduml
+
+
+================================================================================
+DIAGRAMA 3: ARQUITECTURA EVENT-DRIVEN
+================================================================================
+
+Código PlantUML:
+----------------
+
+@startuml
+skinparam backgroundColor #FEFEFE
+
+title Arquitectura Event-Driven - EcommerceArtesanos
+
+!define RECTANGLE class
+
+cloud "Cliente" {
+    [Navegador Web]
+}
+
+package "Frontend" {
+    [Angular 20\nUI + WebSocket Client] as Angular
+}
+
+package "API Backend" {
+    [Router\napi.php] as Router
+    [OrderMediator] as Mediator
+    package "Services" {
+        [InventoryService]
+        [CartService]
+        [OrderService]
+        [NotificationService]
+    }
+}
+
+database "MySQL" {
+    [orders]
+    [products]
+    [carts]
+    [inventory_movements]
+}
+
+queue "RabbitMQ" {
+    [Exchange:\norders.events] as Exchange
+    [Queue:\norders.created] as Queue
+}
+
+package "Workers" {
+    [worker-pedidos-creados.js\n(Node.js)] as Worker
+    [WebSocket Server\n:3005] as WS
+}
+
+[Navegador Web] -down-> Angular : HTTP
+Angular -down-> Router : REST API\nPOST /orders
+Router -down-> Mediator
+Mediator -down-> InventoryService
+Mediator -down-> CartService
+Mediator -down-> OrderService
+Mediator -down-> NotificationService
+
+InventoryService -down-> [products]
+CartService -down-> [carts]
+OrderService -down-> [orders]
+
+NotificationService -right-> Exchange : AMQP\npublish
+Exchange -down-> Queue : routing\nkey
+Queue -right-> Worker : consume
+
+Worker -down-> WS
+WS -left-> Angular : WebSocket\nws://localhost:3005
+
+@enduml
+
+
+================================================================================
+DIAGRAMA 4: COMPONENTES DEL SISTEMA
+================================================================================
+
+Código PlantUML:
+----------------
+
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle uml2
+
+title Diagrama de Componentes - EcommerceArtesanos
+
+package "Capa de Presentación" #LightBlue {
+    [Angular 20] as UI
+    [WebSocket Service] as WSClient
+}
+
+package "Capa de API" #LightGreen {
+    [api.php Router]
+    [orders.php Controller]
+    [products.php Controller]
+    [carts.php Controller]
+}
+
+package "Capa de Negocio" #LightYellow {
+    [OrderMediator]
+    [InventoryService]
+    [CartService]
+    [OrderService]
+    [NotificationService]
+}
+
+package "Capa de Datos" #LightGray {
+    database "MySQL\necommerce_artesanos" as DB
+}
+
+package "Capa de Mensajería" #LightPink {
+    queue "RabbitMQ" as MQ
+}
+
+package "Capa de Workers" #LightCoral {
+    [worker-pedidos-creados.js]
+    [WebSocket Server :3005] as WSServer
+}
+
+UI --> [api.php Router] : HTTP REST
+[api.php Router] --> [orders.php Controller]
+[orders.php Controller] --> [OrderMediator]
+
+[OrderMediator] --> [InventoryService]
+[OrderMediator] --> [CartService]
+[OrderMediator] --> [OrderService]
+[OrderMediator] --> [NotificationService]
+
+[InventoryService] --> DB
+[CartService] --> DB
+[OrderService] --> DB
+
+[NotificationService] --> MQ : AMQP Publish
+
+MQ --> [worker-pedidos-creados.js] : AMQP Consume
+
+[worker-pedidos-creados.js] --> WSServer
+WSServer --> WSClient : WebSocket
+WSClient --> UI
+
+@enduml
+
+
+================================================================================
+DIAGRAMA 5: FLUJO DE DATOS (MERMAID - Alternativa)
+================================================================================
+
+Código Mermaid:
+---------------
+
+```mermaid
+flowchart TB
+    subgraph Cliente
+        A[Usuario] --> B[Angular Frontend]
+    end
+    
+    subgraph "API PHP"
+        B -->|POST /orders| C[api.php Router]
+        C --> D[orders.php]
+        D --> E[OrderMediator]
+        
+        subgraph Services
+            E --> F[CartService]
+            E --> G[InventoryService]
+            E --> H[OrderService]
+            E --> I[NotificationService]
+        end
+    end
+    
+    subgraph Database
+        F --> J[(MySQL)]
+        G --> J
+        H --> J
+    end
+    
+    subgraph "Message Broker"
+        I -->|publish| K[RabbitMQ]
+        K -->|consume| L[Worker Node.js]
+    end
+    
+    subgraph "Real-Time"
+        L --> M[WebSocket Server]
+        M -->|ws://localhost:3005| B
+    end
+```
+
+
+================================================================================
+DIAGRAMA 6: ESTADOS DE UNA ORDEN
+================================================================================
+
+Código PlantUML:
+----------------
+
+@startuml
+skinparam backgroundColor #FEFEFE
+
+title Diagrama de Estados - Ciclo de Vida de una Orden
+
+[*] --> Pending : crear orden
+
+state Pending {
+    [*] --> Validating
+    Validating --> StockReserved : stock OK
+    Validating --> Failed : sin stock
+    StockReserved --> Created : commit DB
+}
+
+Created --> Pending : cancelar\n(rollback)
+Created --> Processing : pago confirmado
+Processing --> Shipped : envío iniciado
+Shipped --> Delivered : entrega confirmada
+Delivered --> [*]
+
+Failed --> [*]
+
+note right of Pending
+  Transacción atómica
+  controlada por
+  OrderMediator
+end note
+
+note right of Created
+  Evento publicado
+  a RabbitMQ
+end note
+
+@enduml
+
+
+================================================================================
+INSTRUCCIONES PARA RENDERIZAR
+================================================================================
+
+OPCIÓN 1: PlantUML Online (Recomendado)
+---------------------------------------
+1. Ve a https://www.plantuml.com/plantuml/uml/
+2. Borra el código de ejemplo
+3. Pega el código del diagrama (desde @startuml hasta @enduml)
+4. El diagrama se genera automáticamente
+5. Click en PNG o SVG para descargar
+
+OPCIÓN 2: Mermaid Live
+----------------------
+1. Ve a https://mermaid.live/
+2. Pega el código Mermaid (sin los ```)
+3. El diagrama se genera a la derecha
+4. Exporta como PNG o SVG
+
+OPCIÓN 3: VS Code Extension
+---------------------------
+1. Instala "PlantUML" extension en VS Code
+2. Crea un archivo .puml con el código
+3. Usa Ctrl+Shift+P > "PlantUML: Preview Current Diagram"
+
+
+================================================================================
+RESUMEN DE DIAGRAMAS INCLUIDOS
+================================================================================
+
+1. DIAGRAMA DE CLASES (Mediator Pattern)
+   - Muestra la estructura del patrón con sus servicios
+
+2. DIAGRAMA DE SECUENCIA (Order Flow)
+   - Flujo completo desde la UI hasta el Worker
+
+3. DIAGRAMA DE ARQUITECTURA (Event-Driven)
+   - Vista general del sistema distribuido
+
+4. DIAGRAMA DE COMPONENTES
+   - Capas lógicas del sistema
+
+5. DIAGRAMA DE FLUJO (Mermaid)
+   - Versión simplificada del flujo de datos
+
+6. DIAGRAMA DE ESTADOS
+   - Ciclo de vida de una orden
+
+Todos estos diagramas cubren los aspectos técnicos necesarios para una 
+exposición profesional sobre arquitectura de software.
